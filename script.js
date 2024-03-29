@@ -1,96 +1,104 @@
 const imageWrapper = document.querySelector(".images");
-const searchInput = document.querySelector(".search input");
 const loadMoreBtn = document.querySelector(".gallery .load-more");
 const lightbox = document.querySelector(".lightbox");
 const downloadImgBtn = lightbox.querySelector(".uil-import");
 const closeImgBtn = lightbox.querySelector(".close-icon");
 
-// API key, paginations, searchTerm variables
-const apiKey = "sZz3x5D6wDQKYZLysOLHb4kcNnYB76JAuwm771LLlhMiFPgGCzRsjXYe";
+// Number of images to load initially and per page
 const perPage = 10;
 let currentPage = 1;
-let searchTerm = null;
+let images = [];
 
-const downloadImg = (imgUrl) => {
-    // Converting received img to blob, creating its download link, & downloading it
-    fetch(imgUrl).then(res => res.blob()).then(blob => {
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = new Date().getTime();
-        a.click();
-    }).catch(() => alert("Failed to download image!"));
-}
+// Function to load images from the repository
+const loadImages = async () => {
+    try {
+        // Fetch image names from the GitHub repository
+        const response = await fetch("https://api.github.com/repos/naresh29mpakp/IMAGE1/contents/GALLERY");
+        const data = await response.json();
+        
+        // Extract image URLs from the response
+        images = data.map(file => file.download_url);
+        
+        // Load the initial set of images
+        renderImages();
+    } catch (error) {
+        console.error("Failed to load images:", error);
+    }
+};
 
+// Function to render images in the gallery
+const renderImages = () => {
+    const startIndex = (currentPage - 1) * perPage;
+    const endIndex = Math.min(startIndex + perPage, images.length);
+
+    for (let i = startIndex; i < endIndex; i++) {
+        const img = images[i];
+        const li = document.createElement("li");
+        li.classList.add("card");
+        li.innerHTML = `
+            <img onclick="showLightbox('Image', '${img}')" src="${img}" alt="img">
+            <div class="details">
+                <div class="photographer">
+                    <i class="uil uil-camera"></i>
+                    <span>Photographer</span>
+                </div>
+                <button onclick="downloadImg('${img}')">
+                    <i class="uil uil-import"></i>
+                </button>
+            </div>
+        `;
+        imageWrapper.appendChild(li);
+    }
+
+    if (endIndex < images.length) {
+        loadMoreBtn.style.display = "block";
+    } else {
+        loadMoreBtn.style.display = "none";
+    }
+};
+
+// Function to load more images
+const loadMoreImages = () => {
+    currentPage++;
+    renderImages();
+};
+
+// Function to show lightbox
 const showLightbox = (name, img) => {
-    // Showing lightbox and setting img source, name and button attribute
     lightbox.querySelector("img").src = img;
     lightbox.querySelector("span").innerText = name;
     downloadImgBtn.setAttribute("data-img", img);
     lightbox.classList.add("show");
     document.body.style.overflow = "hidden";
-}
+};
 
+// Function to hide lightbox
 const hideLightbox = () => {
-    // Hiding lightbox on close icon click
     lightbox.classList.remove("show");
     document.body.style.overflow = "auto";
-}
+};
 
-const generateHTML = (images) => {
-    // Making li of all fetched images and adding them to the existing image wrapper
-    imageWrapper.innerHTML += images.map(img =>
-        `<li class="card">
-            <img onclick="showLightbox('${img.photographer}', '${img.src}')" src="${img.src}" alt="img">
-            <div class="details">
-                <div class="photographer">
-                    <i class="uil uil-camera"></i>
-                    <span>${img.photographer}</span>
-                </div>
-                <button onclick="downloadImg('${img.src}');">
-                    <i class="uil uil-import"></i>
-                </button>
-            </div>
-        </li>`
-    ).join("");
-}
+// Function to download image
+const downloadImg = (imgUrl) => {
+    fetch(imgUrl)
+        .then(response => response.blob())
+        .then(blob => {
+            const a = document.createElement("a");
+            const url = window.URL.createObjectURL(blob);
+            a.href = url;
+            a.download = "image.jpg";
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        })
+        .catch(error => console.error("Failed to download image:", error));
+};
 
-const getImages = () => {
-    const repositoryUrl = 'https://github.com/naresh29mpakp/IMAGE1/blob/main/GALLERY/';
-    const imageCount = 75; // Assuming you have 75 images in your repository
-    const images = [];
-
-    for (let i = 1; i <= imageCount; i++) {
-        images.push({
-            photographer: `Photographer ${i}`,
-            src: `${repositoryUrl}IMAGE%20(${i}).jpg`
-        });
-    }
-
-    generateHTML(images);
-}
-
-const loadMoreImages = () => {
-    currentPage++; // Increment currentPage by 1
-    // If searchTerm has some value then call API with search term else call default API
-    let apiUrl = `https://api.pexels.com/v1/curated?page=${currentPage}&per_page=${perPage}`;
-    apiUrl = searchTerm ? `https://api.pexels.com/v1/search?query=${searchTerm}&page=${currentPage}&per_page=${perPage}` : apiUrl;
-    getImages(apiUrl);
-}
-
-const loadSearchImages = (e) => {
-    // If the search input is empty, set the search term to null and return from here
-    if (e.target.value === "") return searchTerm = null;
-    // If pressed key is Enter, update the current page, search term & call the getImages
-    if (e.key === "Enter") {
-        currentPage = 1;
-        searchTerm = e.target.value;
-        imageWrapper.innerHTML = "";
-        getImages(`https://api.pexels.com/v1/search?query=${searchTerm}&page=1&per_page=${perPage}`);
-    }
-}
-
-getImages();
+// Event listeners
 loadMoreBtn.addEventListener("click", loadMoreImages);
-searchInput.addEventListener("keyup", loadSearchImages);
 closeImgBtn.addEventListener("click", hideLightbox);
-downloadImgBtn.addEventListener("click", (e) => downloadImg(e.target.dataset.img));
+downloadImgBtn.addEventListener("click", () => downloadImg(downloadImgBtn.getAttribute("data-img")));
+
+// Load images when the page is loaded
+window.addEventListener("load", loadImages);
