@@ -5,8 +5,7 @@ const lightbox = document.querySelector(".lightbox");
 const downloadImgBtn = lightbox.querySelector(".uil-import");
 const closeImgBtn = lightbox.querySelector(".close-icon");
 
-// API key, paginations, searchTerm variables
-const apiKey = "sZz3x5D6wDQKYZLysOLHb4kcNnYB76JAuwm771LLlhMiFPgGCzRsjXYe";
+// Pagination, searchTerm variables
 const perPage = 10;
 let currentPage = 1;
 let searchTerm = null;
@@ -40,13 +39,13 @@ const generateHTML = (images) => {
     // Making li of all fetched images and adding them to the existing image wrapper
     imageWrapper.innerHTML += images.map(img =>
         `<li class="card">
-            <img onclick="showLightbox('${img.photographer}', '${img.src.large2x}')" src="${img.src.large2x}" alt="img">
+            <img onclick="showLightbox('${img.photographer}', '${img.src.large2x}')" src="${getGithubImageUrl(img.src.large2x)}" alt="img">
             <div class="details">
                 <div class="photographer">
                     <i class="uil uil-camera"></i>
                     <span>${img.photographer}</span>
                 </div>
-                <button onclick="downloadImg('${img.src.large2x}');">
+                <button onclick="downloadImg('${getGithubImageUrl(img.src.large2x)}');">
                     <i class="uil uil-import"></i>
                 </button>
             </div>
@@ -54,18 +53,10 @@ const generateHTML = (images) => {
     ).join("");
 }
 
-const getImages = (apiURL) => {
-    // Fetching images by API call with authorization header
-    searchInput.blur();
-    loadMoreBtn.innerText = "Loading...";
-    loadMoreBtn.classList.add("disabled");
-    fetch(apiURL, {
-        headers: { Authorization: apiKey }
-    }).then(res => res.json()).then(data => {
-        generateHTML(data.photos);
-        loadMoreBtn.innerText = "Load More";
-        loadMoreBtn.classList.remove("disabled");
-    }).catch(() => alert("Failed to load images!"));
+const getGithubImageUrl = (imageUrl) => {
+    // Convert Pexels image URL to GitHub image URL
+    const imageFilename = imageUrl.split("/").pop(); // Get the filename
+    return `https://raw.githubusercontent.com/naresh29mpakp/IMAGE1/main/GALLERY/${imageFilename}`;
 }
 
 const loadMoreImages = () => {
@@ -88,7 +79,24 @@ const loadSearchImages = (e) => {
     }
 }
 
+const getImages = (apiURL) => {
+    // Fetching images by API call with authorization header
+    searchInput.blur();
+    loadMoreBtn.innerText = "Loading...";
+    loadMoreBtn.classList.add("disabled");
+    fetch(apiURL, {
+        headers: { Authorization: apiKey }
+    }).then(res => res.json()).then(data => {
+        generateHTML(data.photos);
+        loadMoreBtn.innerText = "Load More";
+        loadMoreBtn.classList.remove("disabled");
+    }).catch(() => alert("Failed to load images!"));
+}
+
+// Initial loading
 getImages(`https://api.pexels.com/v1/curated?page=${currentPage}&per_page=${perPage}`);
+
+// Event listeners
 loadMoreBtn.addEventListener("click", loadMoreImages);
 searchInput.addEventListener("keyup", loadSearchImages);
 closeImgBtn.addEventListener("click", hideLightbox);
